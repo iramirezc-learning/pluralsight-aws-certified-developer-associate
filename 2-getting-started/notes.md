@@ -313,7 +313,7 @@ There are 2 types od policies:
 9. Click on the "Next: Review" button.
 10. Click on the "Create user" button.
 11. Download the CSV.
-12. Copy the link where users can log in. (https://479067773742.signin.aws.amazon.com/console) After last step, you can also click on the IAM dashboard and get this same link.
+12. Copy the link where users can log in. (https://xxxxxxxxxx479.signin.aws.amazon.com/console) After last step, you can also click on the IAM dashboard and get this same link.
 13. Click on the "Close" button.
 14. Configure your new Access Keys into the CLI: `aws configure`.
 15. Test your credentials: `aws ec2 describe-instances`.
@@ -796,7 +796,7 @@ Usage of Apache Benchmark:
 
 ```sh
 $ ab -n 100 -c 5 http://<url-to-load-balancer>
-# Benchmarking http://pizza-loader-1114611100.us-east-1.elb.amazonaws.com/...
+# Benchmarking http://pizza-loader-xxxxxxx.us-east-1.elb.amazonaws.com/...
 ```
 
 ## Hosting All the Things with S3

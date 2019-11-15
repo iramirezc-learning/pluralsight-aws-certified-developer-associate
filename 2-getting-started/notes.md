@@ -798,3 +798,19 @@ Usage of Apache Benchmark:
 $ ab -n 100 -c 5 http://<url-to-load-balancer>
 # Benchmarking http://pizza-loader-1114611100.us-east-1.elb.amazonaws.com/...
 ```
+
+## Hosting All the Things with S3
+
+TODO
+
+## A Tale of Two Databases with DynamoDB and RDS
+
+TODO
+
+## Automating Your App with Elastic Beanstalk and CloudFormation
+
+TODO
+
+## Speeding Up with CloudFront and ElastiCache
+
+TODO

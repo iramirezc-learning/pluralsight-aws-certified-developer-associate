@@ -10,6 +10,10 @@ Personal notes for the course: [AWS Developer: Getting Started](https://app.plur
 >
 > **Instructor:** Ryan Lewis
 
+## Requirements
+
+* [Pizza Luvrs - Git Hub Repository](https://github.com/ryanmurakami/pizza-luvrs)
+
 ## Course Overview
 
 The course will cover 4 main topics:
@@ -801,7 +805,243 @@ $ ab -n 100 -c 5 http://<url-to-load-balancer>
 
 ## Hosting All the Things with S3
 
-TODO
+I should be able to:
+
+* Know how to create and put objects in an S3 bucket.
+* Understand how Buckets are structured.
+* Use an S3 bucket to store the assets of an app.
+* Use the SDK to connect to an S3 bucket from code.
+* How to config Cross Origin to get access to the assets in an S3 bucket from the app.
+
+### S3 Overview
+
+Simple Storage Service (S3).
+
+An S3 Object is compound by:
+
+* Metadata (File Type, Modified Date, ...)
+* The actual File (with a max size of 5 TB)
+
+An S3 Bucket stores S3 Objects.
+
+Example of an S3 Bucket URL (it must be unique):
+
+* `s3-<us-region>.amazonaws.com/<bucket-name>`
+* `s3-us-west-2.amazonaws.com/pizza-luvrs`
+
+An S3 Object has a Key which is compound by the path and the filename like: `images/logo.jpg`.
+
+S3 allows access:
+
+* By permissions.
+* By IAM Roles with policies.
+
+Cross Region Replication allows to diminish high latency from one region to another or to increase redundancy.
+
+Cloudfront is best for world wide latency.
+
+### Creating an S3 Bucket
+
+#### How to create an S3 bucket
+
+1. Go to the S3 dashboard.
+2. Click on "Create bucket".
+3. Give it a name: `pizza-luvrs-isaac`.
+4. Select a region: `US East (N. Virginia)`.
+5. Click "Next".
+6. Leave configuration defaults, and click "Next".
+7. Un-check "Block public access" to make the bucket public.
+8. Click "Next".
+9. Click "Create bucket".
+
+#### How to assign permissions to a bucket
+
+1. Go to the S3 dashboard.
+2. Click on the bucket you want to assign permissions to.
+3. Click the "Permissions" tab.
+4. Select "Bucket Policy".
+5. Use the [Policy Generator](https://awspolicygen.s3.amazonaws.com/policygen.html).
+6. Select a "S3 Bucket Policy".
+7. Set "Principal" to be: `*`.
+8. Choose "Actions": `Get Object`.
+9. Type the "ARN": `arn:aws:s3:::pizza-luvrs-isaac/*`
+10. Click "Add statement".
+11. Click "Generate Policy".
+12. Copy the Policy JSON Document and close the modal.
+13. Go back to the S3 dashboard.
+14. Paste the Policy JSON.
+15. Click "Save".
+16. You'll see now an orange warning telling that the bucket now is public.
+17. You're all set!
+
+_NOTE: You can add permissions to objects too and have more grained control_.
+
+### Uploading Objects to S3
+
+#### How to upload files to an S3 bucket via CLI
+
+1. Make sure you have already configured your CLI with your secrets!
+2. Type the `aws s3 cp` command (see example above).
+3. Check the files in the Web Console stored in the S3 bucket.
+4. Open one of the stored files. You should see it correctly on the web browser.
+
+```sh
+aws s3 cp <local-folder> s3://<bucket-name>/<remote-folder> --recursive --exclude "<pattern>"
+```
+
+Example:
+
+```sh
+$ aws s3 cp ./assets/js s3://pizza-luvrs-isaac/js --recursive --exclude ".DS_Store"
+# you'll see the files that were uploaded
+```
+
+#### How to upload files to an S3 bucket wia Web Console
+
+1. Go to the S3 dashboard.
+2. Select the bucket you want to upload files to.
+3. Create a folder (optional) by clicking "Create Folder".
+4. Give it a name, for example: `toppings`. And click "Save".
+5. Enter the folder you created.
+6. Click "Upload".
+7. Click "Add Files".
+8. Select the files you want upload from your local.
+9. Click "Upload".
+10. You'll see a progress bar.
+
+### Connecting to S3 with Code
+
+```js
+// imageStoreS3.js
+const AWS = require('aws-sdk')
+
+const s3 = new AWS.S3()
+
+module.exports.save = (name, data) => {
+  return new Promise((resolve, reject) => {
+    const params = {
+      Bucket: 'pizza-luvrs-isaac',
+      Key: `pizzas/${name}.png`,
+      Body: Buffer.from(data, 'base64'),
+      ContentEncoding: 'base64',
+      ContentType: 'image/png'
+    }
+
+    s3.putObject(params, (err, data) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(`//pizza-luvrs-isaac.s3.amazonaws.com/${params.Key}`)
+      }
+    })
+  })
+}
+```
+
+### Working with CORS in S3
+
+#### How to enable (Cross-Origin Resource Sharing) CORS in the S3 bucket
+
+1. Go to the S3 dashboard.
+2. Click on the bucket you want to enable CORS.
+3. Click "Permissions".
+4. Click "CORS Configuration".
+5. Paste the Policy XML configuration below.
+6. Click "Save".
+7. Test creating a pizza with the `pizza-luvrs` app. _Remember to install node dependencies_.
+8. Check if the pizza you created was uploaded to the S3 bucket.
+
+```xml
+<CORSConfiguration>
+    <CORSRule>
+        <AllowedOrigin>*</AllowedOrigin>
+        <AllowedMethod>GET</AllowedMethod>
+        <MaxAgeSeconds>3000</MaxAgeSeconds>
+    </CORSRule>
+</CORSConfiguration>
+```
+
+### Accessing S3 with EC2
+
+#### How to Assign IAM Role to a Newly Launched EC2 Instance
+
+1. Transfer the updated code to the EC2 instance with the `scp` command.
+    1. Make sure your EC2 is running!
+    2. Remove the `node_modules` folder!
+    3. Transfer the code base. See example below.
+2. Create a new AMI.
+    1. Go the the EC2 dashboard.
+    2. Select "Instances".
+    3. Select your `pizza-app` instance.
+    4. Click "Action".
+    5. Select "Image" and then "Create Image".
+    6. Give it a name: `pizza-plus-s3`.
+    7. Click "Create image".
+    8. Click "Close.
+3. Create a new IAM Role.
+    1. Go the the IAM dashboard.
+    2. Select "Roles" from the left menu.
+    3. Click "Create Role".
+    4. Choose "EC2" as service.
+    5. Click "Next".
+    6. Search for "S3" in the "Filter Policy" input box.
+    7. Select "AmazonS3FullAccess".
+    8. Click "Next: tags".
+    9. Click "Next: review".
+    10. Name the role: `pizza-ec2-role`.
+    11. Click "Create role".
+4. Create a new Launcher with the new IAM Role and AMI created.
+    1. Go back to the EC2 dashboard.
+    2. Select "Launch Configurations" from the left menu.
+    3. Click "Create Launch Configuration".
+    4. Select "My AMIs", and then the `pizza-plus-s3`.
+    5. Leave the EC2 type as micro and click "Next".
+    6. Name the launcher: `pizza-launcher-2`.
+    7. Select the IAM role: `pizza-ec2-role`.
+    8. Expand the "Advance Details" section
+    9. Update the "User data" with the script below.
+    10. Choose "Assign a public IP address to every instance" in the "IP Address Type".
+    11. Click "Next".
+    12. Click "Next" again.
+    13. In the Configure Security Group section, choose "Select an existing security group".
+    14. Select the `pizza-ec2-sg`.
+    15. Click "Review".
+    16. Click "Create launch configuration".
+    17. Select the same `pizza-keys`.
+    18. Click "Create launch configuration".
+    19. Click "Close".
+5. Replace the Launch configuration iin the Auto-Scaling group:
+    1. In the EC2 dashboard, click on the "Auto Scaling Groups" menu option.
+    2. Select `pizza-scaler` group.
+    3. In the "Details" tab. Click "Edit".
+    4. Select `pizza-launcher-2` to be the new "Launch Configuration".
+    5. Click "Save".
+6. Get rid of the old running instances.
+    1. Select the instances that are different from `pizza-app`.
+    2. From the "Actions" button select "Instance State" and then "Terminate".
+    3. Wait for a while.
+    4. Go to the "Instances" tab, and confirm that the are other 2 new instances running with the `pizza-launcher-2` configuration.
+7. Play around with the app with the same using the same Load Balancer URL.
+    1. Confirm that the assets come from the S3 bucket.
+
+Transfer the code base:
+
+```sh
+# notice the removal of the <remote-app-folder>
+$ rm -rf node_modules && cd ..
+# Remove node_modules folder and go to the parent's folder.
+$ scp -r -i ./pizza-keys.pem ./pizza-luvrs ec2-user@<ec2-public-ip>:/home/ec2-user
+# This will override the files, you shouldn't need to reinstall node modules.
+```
+
+Script for `pizza-launcher-2`:
+
+```sh
+#!/bin/bash
+echo "starting pizza-luvrs"
+cd /home/ec2-user/pizza-luvrs
+npm start
+```
 
 ## A Tale of Two Databases with DynamoDB and RDS
 

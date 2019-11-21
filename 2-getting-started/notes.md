@@ -1045,7 +1045,289 @@ npm start
 
 ## A Tale of Two Databases with DynamoDB and RDS
 
-TODO
+I should be able to:
+
+* Understand how services RDS and DynamoDB work
+* Implement any DB service with a Web App
+
+### Relational Database Service (RDS) Overview
+
+RDS is the best way to go for Relational Databases.
+
+RDS handles these main tasks:
+
+* Software updates
+* Periodic backups that run daily by default.
+* System Health Monitoring
+* Multi A-Z (Availability Zone) Deployment.
+  * Replica in the same region.
+  * Automatic fail-over in case of a catastrophic event.
+* Database Read Replica
+  * Creates an replica from the production database for development purposes.
+  * It does not impact the production database.
+  * It is not used as fail-over or in any other AZ.
+  * Offers eventual consistency with the source.
+
+An RDS is encapsulated inside an EC2, so it is important to choose which type of EC2 you need. An instance with very little CPU won't be able to process all the queries on time that you need. Think about the Storage too.
+
+The data in a database represents the **real value** for any company. So, it is important to keep it safe, secure, and available.
+
+### Choosing a Database Engine in RDS
+
+RDS supports the following db engines (pricing will vary):
+
+* MariaDB
+* MySQL
+* Microsoft SQL
+* PostgreSQL
+* Amazon Aurora
+* OracleDB
+
+Choose your DB engine wisely:
+
+* Which DB do you have more experience working with?
+* How much do I want to expend?
+* Which DB offers the best client?
+* Which DB I am running locally?
+
+### Creating a Database in RDS
+
+#### How to create a PostgreSQL DB in RDS
+
+1. From the web console, search for the RDS service.
+2. From the RDS dashboard, click "Create Database".
+3. Select the engine type: "PostgreSQL".
+4. Choose the engine's version: `10.6-R1`
+5. From the templates, choose: "Free tier".
+6. In the settings sections, give the db a name: `pizza-db`.
+7. Create a master user to secure the database:
+    * Provide a username
+    * Provide and confirm the password.
+8. Confirm that the DB instance size is a `t2.micro` for the Free tier.
+9. Leave the Storage section with default values.
+10. In the Connectivity section, choose the VPC `pizza-vpc`.
+11. Expand the Additional Connectivity Configuartion section, and scroll down to the Publicly accessible section.
+12. Choose "Yes" to make it public (Not for production).
+13. Expand the Additional Configuration section.
+14. Type the Initial database name to be: `pizza_luvrs`.
+15. Scroll down and click "Create database".
+
+### Connecting to a Database in RDS
+
+#### How to configure a DB to be accessible from your local
+
+1. In the RDS dashboard, you should see the database you recently created.
+2. Click on the link to the database.
+3. In the Connectivity & Security section, you see a Security sub-section. Click in the link under VPC security groups.
+4. Select the security group (there should be only one).
+5. Click in the Inbound tab.
+6. Click Edit.
+7. Click Add Rule.
+8. Select "PostgreSQL" as Type.
+9. Change the Source to be: "My IP".
+10. Click Save.
+
+#### How to connect to Postgres DB with Postico
+
+1. Download and install [Postico](https://eggerapps.at/postico/) (Free Trial).
+    * Or use [pgAdmin](https://www.postgresql.org/) as an alternative.
+2. Configure the Postico connection:
+    1. Type `pizza-connection` as nickname.
+    2. Go back to the RDS dashboard.
+    3. Click on "Databases".
+    4. Click on the `pizza-db`.
+    5. Retrieve the Endpoint from the Connectivity & Security section.
+    6. Paste it as the Host in Postico.
+    7. Leave the port to be: `5432`.
+    8. Type your username & password (defined when creating the database in the AWS console).
+    9. Type `pizza_luvrs` in the database field.
+    10. Click Connect.
+    11. You should be all set with Postico.
+3. Create a new Table Schema:
+    1. Click Add Table ("+ Table").
+    2. Name the table: `pizzas`.
+    3. Add the following tables:
+        * id: text
+        * name: text
+        * toppings: text
+        * img: text
+        * username: text
+        * created: bigint
+        * createdAt: timestamptz
+        * updatedAt: timestamptz
+    4. Click Save Changes
+
+### Interacting with RDS in Code
+
+To connect to your database, you don't need the AWS SDK, you can do it normally using an ORM (Object Relational Mapping) software like `sequelize`.
+
+Reasons to use a DB:
+
+* Persistance of the data even when the app is not running.
+* Scalability. If your storing the data in memory, you'll end-up slowing the overall performance of your app.
+
+> TIL: Fire & Forget. Don't wait for the promise resolution.
+
+#### How to connect to the Postgres DB using Sequelize
+
+```js
+// data/pizzaStore.js
+const Sequelize = require('sequelize')
+
+const host = 'pizza-db.xxxxxxxxxxNNN.us-east-1.rds.amazonaws.com'
+const database = 'pizza_luvrs'
+const username = 'postgres'
+const password = 'P4SSw0rd'
+const dialect = 'postgres'
+
+const pgClient = new Sequelize(database, username, password, {
+  host,
+  dialect
+})
+
+const Pizza = pgClient.define('pizza', {
+  id: {
+    type: Sequelize.STRING,
+    primaryKey: true
+  },
+  name: {
+    type: Sequelize.STRING
+  },
+  toppings: {
+    type: Sequelize.STRING
+  },
+  img: {
+    type: Sequelize.STRING
+  },
+  username: {
+    type: Sequelize.STRING
+  },
+  created: {
+    type: Sequelize.BIGINT
+  }
+})
+
+Pizza.sync().then(() => {
+  console.log('Postgres connection ready to use!')
+})
+
+module.exports = Pizza
+```
+
+### DynamoDB Overview
+
+For a DynamoDB table you will only need to configure the "provisioned throughput capacity" for the Read/Write operations per second. Which determines how much hardware should be given depending on the number of requests.
+
+### Deciding Between RDS and DynamoDB
+
+A relational DB:
+
+* Efficient Data Transfer & Storage.
+* Strict Schema.
+* Query Flexibility with SQL.
+
+A non-relational DB:
+
+* Not restricted schema: only the id.
+* Stronger Storage Flexibility.
+* Limited Query Properties.
+
+Storage Flexibility (DynamoDB) vs Query Flexibility (RDS)?
+
+### Creating a Table in DynamoDB
+
+#### How to create a Table in DynamoDB
+
+1. Search for the DynamoDB service.
+2. From the DynamoDB dashboard, click Create Table.
+3. Name the table name: `toppings`
+4. Define `id` as the Primary Key with a `string` type.
+5. Leave the default Table Settings.
+6. Click create.
+7. Now create another table for the `users` by repeating the same process. Define `username` as the Primary Key with a `string` type.
+
+### Connecting to DynamoDB with Code
+
+**NOTE:** Make sure you still logged in into the AWS CLI. Otherwise use the `aws configure` command.
+
+#### How to connect to a DynamoDB using the AWS SDK
+
+1. Create the file `/data/dynamoStore` with the code below.
+2. You'll need to modify the `/data/toppings.js` and `/data/users.js`. To implement the `DynamoStore`.
+3. Start the app.
+4. Confirm that both tables `toppings` and `users` in DynamoDB are populated.
+
+```js
+// data/dynamoStore.js
+const AWS = require('aws-sdk')
+
+AWS.config.update({ region: 'us-east-1' })
+
+const dynamoDB = new AWS.DynamoDB.DocumentClient()
+
+async function putItem (table, item) {
+  return new Promise((resolve, reject) => {
+    const params = {
+      TableName: table,
+      Item: item
+    }
+
+    dynamoDB.putItem(params, (err, data) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(data)
+      }
+    })
+  })
+}
+
+async function getAllItems (table) {
+  return new Promise((resolve, reject) => {
+    const params = {
+      TableName: table
+    }
+
+    dynamoDB.scan(params, (err, data) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(data.Items)
+      }
+    })
+  })
+}
+
+async function getItem (table, idKey, id) {
+  return new Promise((resolve, reject) => {
+    const params = {
+      TableName: table,
+      Key: {
+        [idKey]: id
+      }
+    }
+
+    dynamoDB.get(params, (err, data) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(data.Item)
+      }
+    })
+  })
+}
+
+module.exports = {
+  putItem,
+  getAllItems,
+  getItem
+}
+```
+
+#### Transferring the code to the EC2 instance
+
+1. Make sure to add `AmazonRDSFullAccess` and `AmazonDynamoDBFullAccess` policies to the `pizza-ec2-role` role.
+2. Allow access to RDS instance from `pizza-ec2-sg` by adding it to the RDS instance security group.
 
 ## Automating Your App with Elastic Beanstalk and CloudFormation
 

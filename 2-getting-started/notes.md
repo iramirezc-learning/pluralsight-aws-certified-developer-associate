@@ -1331,7 +1331,166 @@ module.exports = {
 
 ## Automating Your App with Elastic Beanstalk and CloudFormation
 
-TODO
+I should be able to:
+
+* Understand the basics for CloudFormation.
+* Define a stack with a CloudFormation template.
+* Use Beanstalk to deploy EC2 instances.
+
+### CloudFormation Overview
+
+CloudFormation is a tool of AWS to replicate infrastructure that you do by hand in the Web Console but faster with just a single template that can be either JSON or YAML.
+
+CloudFormation Stacks is a group or AWS resources defined inside the CloudFormation template.
+
+CloudFormation templates are great for development process because you can replicate again and again the same infrastructure.
+
+Every CloudFormation stack must have a unique name.
+
+You can do other operations with a CloudFormation stack:
+
+* Updates
+* Deletes
+
+CloudFormation only creates the resources you explicitly configure in the template.
+
+There are some tools that can help you into the process of creating a new CloudFormation template:
+
+* The Cloud Formation Designer.
+* The CloudFormer (reverse engineering).
+
+### Provisioning Resources with CloudFormation
+
+#### How to create a CloudFormation Stack with an existing template
+
+1. Update the `cloudformation/pizza.template` file (pizza-luvrs repository) by changing the `ImageId`, in the section `AWS::AutoScaling::LaunchConfiguration`, to be the same as the AMI in your AMIs.
+    1. Go to the EC2 dashboard.
+    2. Click AMIs from the left menu.
+    3. Retrieve the AMI ID for the `pizza-plus-3` AMI.
+    4. Update the `pizza.template` file.
+2. Now, go to the CloudFormation dashboard.
+3. Click Create Stack.
+4. Select With existing resources (import resources).
+5. Click Next.
+6. Choose Upload a template file.
+7. Click Choose file.
+8. Select the `pizza.template` and click Open.
+9. Click Next. (I'm getting and Error that says that some resources can not be imported.)
+10. Give the Stack a name: `pizza-stack`.
+11. Click Next.
+12. Leave the Configure Stack Options with the default values.
+13. Click Next.
+14. Click Create Stack.
+15. Wait around 15 minutes until the stack is created.
+16. You can refresh the Events to check status of the events.
+17. Test your Stack:
+    1. Go to the EC2 dashboard.
+    2. Select Load Balancers from the left menu.
+    3. Select the `pizza-xxxx` load balancer that has a random name.
+    4. Copy the DNS name.
+    5. Test it in the web browser.
+18. Finally, you can delete your stack.
+
+### Elastic Beanstalk Overview
+
+Elastic Beanstalk handles:
+
+* Scaling
+* Monitoring
+* Resource Provisioning
+
+Elastic Beanstalk vs CloudFormation
+
+EB provisions the resources and runs the application. CF only provisions the resources.
+
+A Elastic Beanstalk Application:
+
+* Represents a logical application.
+* Runs in a different platform.
+* Has one or more application versions.
+
+Inside an Elastic Beanstalk Application:
+
+* There are more than one environments (Production, Development, etc...), which have different configurations like: AMI, EC2 instances Types, AutoScaling Groups, etc.
+  * Every environment may run a different Application Version.
+
+### Deploying an Application with Elastic Beanstalk
+
+Elastic Beanstalk uses CloudFormation behind the scenes.
+
+#### How to deploy an Application with Elastic Beanstalk
+
+1. Go to the Elastic Beanstalk dashboard.
+2. Click Create New Application.
+3. Name it: `pizza-luvrs`.
+4. Click Create.
+5. In the Environments section, select Create One Now.
+6. Select the Web Server Environment.
+7. Leave the name as it is.
+8. Leave AWS to create a random Domain Name.
+9. Select Node.js as platform.
+10. Choose Upload your code.
+11. You need to zip the code with the node modules installed. Issue the command `zip -r package.zip .`. Make sure to be inside the `pizza-luvrs` directory.
+12. Go back to the AWS console and click Upload.
+13. Click browse and select the `package.zip` you created.
+14. Click Upload.
+15. Click Configure more options.
+16. Click Modify in the Network box.
+17. Select the `pizza-VPC`.
+18. Check the box: `Public IP Address`.
+19. Select both of the subnets available.
+20. Click Save.
+21. Click Modify in the Instances box.
+22. Select the `pizza-ec-sg` as EC2 security group.
+23. Click Save.
+24. Click Modify in the Security box.
+25. Select `pizza-keys` as the EC2 key pair.
+26. Select `pizza-ec2-role` as the IAM instance profile.
+27. Click Save.
+28. Click Modify in the Capacity box.
+29. Change the Environment Type to be: `Load balanced`.
+30. Click Save.
+31. Click Modify in the Load Balancer box.
+32. In the Processes section select the `default` protocol.
+33. Click Actions and select Edit.
+34. Change the port to be: `3000`.
+35. Click Save.
+36. Click Save again.
+37. Click Create Environment at the bottom of the screen.
+38. Your environment should be ready in a few minutes.
+
+### Configuring Permission for Elastic Beanstalk
+
+#### How to configure permissions for Elastic Beanstalk
+
+1. Go to the IAM dashboard
+2. Select Roles
+3. Click on the `pizza-ec2-role` link.
+4. Click the Attach Policy button.
+5. Filter by `RDS`.
+6. Check the box for `AmazonRDSFullAccess`.
+7. Now, filter by `DynamoDB`.
+8. Check the box for `AmazonDynamoDBFullAccess`.
+9. Now, filter by `AWSElasticBeanstalkWebTier`.
+10. Check the box for `AWSElasticBeanstalkWebTier`.
+11. Click Attach Policy.
+12. Make sure the RDS instance allows access from the EC2 instances:
+    1. Go to the RDS dashboard.
+    2. Select the `pizza-db` instance.
+    3. Click the link under VPC Security Groups.
+    4. Go to the Inbound Tab.
+    5. Click Edit.
+    6. Remove the PostgreSQL rule (previously created) for your IP.
+    7. Add a new rule of Type `PostgreSQL`, and add `pizza-ec2-sg` as Source.
+    8. Click Save.
+    9. Now your EC2 instances and Elastic Beanstalk has access to the database.
+13. You need to restart the Elastic Beanstalk.
+14. Go back to the EB Dashboard.
+15. Click on the environment you want to restart.
+16. Click Actions, and select Restart Service.
+17. Confirm by clicking Restart Application Service.
+18. After restart, use the Environment URL to access from your web browser.
+19. You should have the `pizza-luvrs`app up & running.
 
 ## Speeding Up with CloudFront and ElastiCache
 

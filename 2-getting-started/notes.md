@@ -1494,4 +1494,171 @@ Elastic Beanstalk uses CloudFormation behind the scenes.
 
 ## Speeding Up with CloudFront and ElastiCache
 
-TODO
+I should be able to:
+
+* Understand how CloudFront works and store the assets for the `pizza-luvrs` app.
+* Implement CloudFront to tackle the issue of high latency.
+* Understand how to cache application data using ElastiCache.
+* Use Redis to store info locally.
+
+### CloudFront Overview
+
+One of the biggest challenges for a WebApp is latency.
+
+Solving a latency problem is not easy. Even if you improve your application performance or even by increasing your hardware.
+
+The only solution is to move your WebApp closer to your users.
+
+CloudFront is the AWS solution to tackle latency by moving your "Objects" closer to the users.
+
+CloudFront integrates with S3, EC2 and Load Balancers.
+
+CloudFront is composed by Distributions (set of content), each Distribution can have different Origins, each Origin can be a service like S3 or EC2.
+
+CloudFront Distributions can have different behaviors like caching based on the path, time-to-live, etc.
+
+### Edging Your App with CloudFront
+
+#### How to create a CloudFront Distribution
+
+1. Go to the CloudFront dashboard.
+2. Create Click Distribution
+3. Click Get Started.
+4. Select `awseb-XXXX` as the Origin Domain Name.
+5. Leave the Original Path blank.
+6. Leave the protocols with the default values.
+7. Leave HTTP ports with default values.
+8. Leave the HEaders in blank.
+9. Choose "Redirect HTTP to HTTPs" in the Viewer Protocol Policy.
+10. Choose All Methods (GET, PUT, POST, DELETE) for the Allowed HTTP Methods.
+11. Change the Object Caching to Customize:
+    1. Set Minimum TTL to: `10` seconds.
+12. Select Whitelist for the Forward Cookies.
+13. Add `AWSELB` and `pzz4lyfe` in the Whitelist Cookies.
+14. Select "Forward all, cache based on all" in the Query String Forwarding and Caching.
+15. Click Create Distribution.
+16. Now wait until the distribution is created.
+
+### Configuring a CloudFront Distribution
+
+#### How to configure a CloudFront Distribution
+
+1. Navigate to the CloudFront dashboard.
+2. Click on the ID link of the Distribution you created before.
+3. Click Behavior tab:
+    1. Click Create Behavior. (New behavior for routing)
+    2. Path Pattern: `pizza/*`.
+    3. Origin or Origin Group: `ELB-awseb-XXX`.
+    4. Viewer Protocol Policy: Redirect HTTP to HTTPS.
+    5. Allowed HTTP Methods: GET only.
+    6. Object Caching: `Customize`
+        * Minimum TTL: `7200` seconds (2 hours).
+        * Forward Cookies: `Whitelist`.
+        * Whitelist Cookies: `awselb` and `pzz4lyfe`.
+    7. Click Create.
+4. Copy the Domain Name for the distribution you created.
+5. Pasted in the a new tab in your browser.
+6. Pizza Luvrs App should be running now over CloudFront.
+
+### ElasticCache Overview
+
+ElastiCache is a service for In-memory cache data-store.
+
+ElasitCache works Clusters, each Cluster has Nodes.
+
+A Node is basically a EC2 instance.
+
+There are two services that work with ElastiCache: Memcached and Redis.
+
+Memcached supports a cluster with 20 Nodes at most.
+
+Redis supports clusters with one single node and replicas for your clusters.
+
+You should always use Redis over Memcached. Because it has more features, it is more scalable and it is adopted as the standard by most companies.
+
+### Configuring a Redis Cluster in ElastiCache
+
+#### How to create a Security Group for ElastiCache Cluster
+
+1. Go to the EC2 dashboard.
+2. Select Security Groups from the left menu.
+3. Click on the Create Security Group button.
+4. Name it `pizza-redis-sg`.
+5. Give it a description: `pizza-redis-sg`.
+6. Select the `pizza-vpc` as VPC.
+7. Add a new Inbound Rule:
+    * Type: Custom TCP
+    * Port Range: 6379
+    * Source: `pizza-ec2-sg`
+8. Click Create.
+
+#### How to create a ElastiCache using Redis
+
+1. Go to the ElastiCache dashboard.
+2. Select Redis from the left menu.
+3. Click Create.
+4. Redis Settings:
+    * Name: `pizza-cluster`.
+    * Description: `pizza-cluster`.
+    * Number of replicas: `0`
+    * Node Type: `cache.t2.micro` (for free tier).
+5. Advanced Redis Settings:
+    * Subnet group: Create new.
+    * Name: `pizza-cache-group`.
+    * VPC ID: `pizza-vpc` (look for its ID in the EC2 dashboard).
+    * Select both subnets.
+6. Security:
+    * Change the Security Group to be: `pizza-redis-sg`.
+    * Click Save.
+7. Click Create.
+8. Wait for the ElastiCache to be created.
+
+### Interacting with ElastiCache in Code
+
+#### How to connect the Redis Cluster into the Pizza-Luvs App
+
+1. Retrieve the Primary Endpoint for the Redis cluster.
+2. Update the `index.js` file.
+3. Update the `plugins` file.
+
+```js
+// index.js
+const server = Hapi.Server({
+  port: process.env.PORT || 3000,
+  cache: [{
+    name: 'redis',
+    provider: {
+      constructor: require('@hapi/catbox-redis'),
+      options: {
+        partition: 'cache',
+        host: 'pizza-cluster.xxxx.nnnn.usw1.cache.amazonaws.com' // you need to get this value from the ElastiCache Dashboard > Redis > Primary Endpoint
+      }
+    }
+  }]
+})
+```
+
+```js
+// plugins.js
+const cache = server.cache({
+  cache: 'redis',
+  segment: 'sessions',
+  expiresIn: 24 * 60 * 60 * 1000
+})
+```
+
+#### How to add ElastiCache permissions to EC2 role
+
+1. Navigate to the IAM dashboard.
+2. Select Roles
+3. Select the `pizza-ec2-role`.
+4. Attach the policy `AmazonElastiCacheFullAccess`.
+5. Zip your app code again.
+6. Navigate to the Elastic Beanstalk dashboard.
+7. Select the Pizza Luvrs Environment (`PizzaLuvrs-env`)
+8. Click Upload and Deploy
+9. Change the Version Label to be: `pizza-elasticache`.
+10. Browse to your Zip file.
+11. Click Deploy.
+12. Click on the Elastic Beanstalk URL.
+13. Now your application should be storing your user session in Redis.

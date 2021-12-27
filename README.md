@@ -1,3 +1,5 @@
+# ⚠️ WON'T DO: I don't longer have a Pluralsight license.
+
 # AWS Certified Developer Associate - Personal Notes
 
 This repo serves as my collection of learning resources for the courses in the [AWS Certified Developer Associate path](https://app.pluralsight.com/paths/certificate/aws-certified-developer-associate) at Pluralsight.
